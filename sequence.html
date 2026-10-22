@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sequence – Card Board Game</title>
+<style>
+  :root {
+    --bg: #14301f;
+    --felt: #1b4a2e;
+    --card: #fdfaf2;
+    --ink: #1a1a1a;
+    --red: #c0222b;
+    --blue: #2f6fe4;
+    --green: #1fae5a;
+    --gold: #f5c542;
+    --panel: #0f2417;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(circle at 50% 0%, #245c3a, var(--bg));
+    color: #f3f0e6;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  .app { max-width: 720px; margin: 0 auto; padding: 12px 10px 40px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 1.5rem; letter-spacing: .5px; }
+  .score { display: flex; gap: 8px; }
+  .pill {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--panel); padding: 5px 10px; border-radius: 999px; font-size: .9rem;
+    border: 2px solid transparent;
+  }
+  .pill.active { border-color: var(--gold); }
+  .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .dot.t0 { background: var(--blue); }
+  .dot.t1 { background: var(--green); }
+  #status { margin: 10px 0 8px; min-height: 1.4em; font-weight: 600; text-align: center; }
+
+  #board {
+    --cell: min(9.2vw, 62px);
+    display: grid;
+    grid-template-columns: repeat(10, var(--cell));
+    grid-template-rows: repeat(10, var(--cell));
+    gap: 2px;
+    justify-content: center;
+    background: #0c1d13;
+    padding: 4px;
+    border-radius: 10px;
+    width: fit-content;
+    margin: 0 auto;
+    box-shadow: 0 6px 20px rgba(0,0,0,.45);
+  }
+  .cell {
+    position: relative;
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-weight: 700;
+    line-height: 1;
+    font-size: calc(var(--cell) * .3);
+    user-select: none;
+    cursor: default;
+  }
+  .cell .s { font-size: 1.25em; }
+  .cell.red { color: var(--red); }
+  .cell.free { background: linear-gradient(135deg, #f5c542, #e69a1c); color: #5a3b00; font-size: calc(var(--cell) * .5); }
+  .cell.target { cursor: pointer; box-shadow: 0 0 0 3px var(--gold) inset; background: #fff6cf; }
+  .cell.target.removable { box-shadow: 0 0 0 3px #e0463a inset; background: #ffe3df; }
+  .cell.last::after {
+    content: ""; position: absolute; inset: -2px; border: 3px dashed #fff; border-radius: 6px; pointer-events: none;
+  }
+  .chip {
+    position: absolute; width: 72%; height: 72%; border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,.5), inset 0 -3px 5px rgba(0,0,0,.25), inset 0 3px 5px rgba(255,255,255,.35);
+    pointer-events: none;
+  }
+  .chip.t0 { background: var(--blue); }
+  .chip.t1 { background: var(--green); }
+  .chip.locked { outline: 3px solid var(--gold); outline-offset: -1px; }
+
+  .section-title { margin: 16px 0 6px; font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
+  #hand { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .hcard {
+    width: 60px; height: 84px; background: var(--card); color: var(--ink);
+    border-radius: 8px; border: 3px solid transparent;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 1.35rem; cursor: pointer; position: relative;
+    box-shadow: 0 3px 8px rgba(0,0,0,.4);
+    transition: transform .1s;
+  }
+  .hcard.red { color: var(--red); }
+  .hcard .s { font-size: 1.6rem; }
+  .hcard .tag { font-size: .55rem; font-weight: 600; margin-top: 2px; text-transform: uppercase; }
+  .hcard:hover { transform: translateY(-4px); }
+  .hcard.sel { border-color: var(--gold); transform: translateY(-8px); }
+  .hcard.dead { opacity: .55; }
+  .hcard.dead::after {
+    content: "DEAD"; position: absolute; bottom: 3px; font-size: .55rem; color: #7a1a1a; font-weight: 800;
+  }
+  .hcard.disabled { pointer-events: none; opacity: .5; }
+
+  .controls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+  button, select {
+    background: var(--panel); color: #f3f0e6; border: 1px solid #3a6b4c; border-radius: 8px;
+    padding: 8px 12px; font-size: .9rem; cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: #1c3d2a; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.primary { background: var(--gold); color: #3a2a00; border-color: var(--gold); font-weight: 700; }
+
+  #log {
+    margin-top: 14px; background: var(--panel); border-radius: 8px; padding: 8px 10px;
+    max-height: 120px; overflow-y: auto; font-size: .85rem; line-height: 1.5;
+  }
+  #log div { opacity: .9; }
+  #log div:first-child { font-weight: 600; opacity: 1; }
+
+  details { margin-top: 14px; background: var(--panel); border-radius: 8px; padding: 8px 12px; font-size: .88rem; line-height: 1.5; }
+  summary { cursor: pointer; font-weight: 600; }
+
+  dialog { border: none; border-radius: 14px; padding: 24px 28px; text-align: center; background: #fdfaf2; color: #1a1a1a; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h2 { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>♠ Sequence ♦</h1>
+    <div class="score">
+      <div class="pill" id="pill0"><span class="dot t0"></span> You: <b id="score0">0</b></div>
+      <div class="pill" id="pill1"><span class="dot t1"></span> Computer: <b id="score1">0</b></div>
+    </div>
+  </header>
+
+  <div id="status"></div>
+  <div id="board"></div>
+
+  <div class="section-title">Your hand</div>
+  <div id="hand"></div>
+
+  <div class="controls">
+    <button id="discardBtn">Swap dead card</button>
+    <button id="skipBtn" disabled>Skip turn (no moves)</button>
+    <label>Sequences to win
+      <select id="needSel">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+      </select>
+    </label>
+    <button id="newBtn" class="primary">New game</button>
+  </div>
+
+  <div id="log"></div>
+
+  <details>
+    <summary>How to play</summary>
+    <ul>
+      <li>Pick a card from your hand, then click one of the highlighted spaces on the board to place your chip.</li>
+      <li>Get <b>5 chips in a row</b> (across, down or diagonal) to make a sequence. The gold corners are wild for everyone.</li>
+      <li><b>J♦ / J♣</b> (two-eyed jacks) are wild: put a chip on any open space.</li>
+      <li><b>J♠ / J♥</b> (one-eyed jacks) remove an opponent's chip (not one that's part of a sequence).</li>
+      <li><b>Dead card:</b> if both spaces for a card are taken, you can swap it for a new card once per turn, then still play.</li>
+      <li>Two sequences can share one chip. Win by reaching the number of sequences chosen above.</li>
+    </ul>
+  </details>
+</div>
+
+<dialog id="endDlg">
+  <h2 id="endTitle"></h2>
+  <p id="endMsg"></p>
+  <button class="primary" id="againBtn">Play again</button>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------- Board layout ----------
+  const LAYOUT = [
+    "F  2S 3S 4S 5S 6S 7S 8S 9S F",
+    "6C 5C 4C 3C 2C AH KH QH 10H 10S",
+    "7C AS 2D 3D 4D 5D 6D 7D 9H QS",
+    "8C KS 6C 5C 4C 3C 2C 8D 8H KS",
+    "9C QS 7C 6H 5H 4H AH 9D 7H AS",
+    "10C 10S 8C 7H 2H 3H KH 10D 6H 2D",
+    "QC 9S 9C 8H 9H 10H QH QD 5H 3D",
+    "KC 8S 10C QC KC AC AD KD 4H 4D",
+    "AC 7S 6S 5S 4S 3S 2S 2H 3H 5D",
+    "F  AD KD QD 10D 9D 8D 7D 6D F"
+  ];
+  const SYM = { S: "♠", H: "♥", D: "♦", C: "♣" };
+  const RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+  const N = 10;
+  const DIRS = [[0,1],[1,0],[1,1],[1,-1]];
+
+  const board = LAYOUT.map(row => row.trim().split(/\s+/).map(tok =>
+    tok === "F" ? { free: true } : { rank: tok.slice(0, -1), suit: tok.slice(-1) }
+  ));
+  const positions = {}; // "7H" -> [[r,c],[r,c]]
+  board.forEach((row, r) => row.forEach((cell, c) => {
+    if (cell.free) return;
+    (positions[cell.rank + cell.suit] ||= []).push([r, c]);
+  }));
+
+  // ---------- State ----------
+  let chips, locked, deck, discard, hands, score, turn, deadUsed, selected, lastMove, over, need, busy;
+
+  const $ = id => document.getElementById(id);
+  const boardEl = $("board");
+  const cellEls = [];
+
+  // ---------- Cards ----------
+  function makeDeck() {
+    const d = [];
+    for (let k = 0; k < 2; k++)
+      for (const s of "SHDC") for (const r of RANKS) d.push({ rank: r, suit: s });
+    return shuffle(d);
+  }
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  const isJack = c => c.rank === "J";
+  const isTwoEye = c => isJack(c) && (c.suit === "D" || c.suit === "C");
+  const isOneEye = c => isJack(c) && (c.suit === "S" || c.suit === "H");
+  const isRed = c => c.suit === "H" || c.suit === "D";
+
+  function draw(team) {
+    if (deck.length === 0) { deck = shuffle(discard); discard = []; }
+    if (deck.length) hands[team].push(deck.pop());
+  }
+
+  function validCells(card, team) {
+    const out = [];
+    if (isTwoEye(card)) {
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++)
+        if (!board[r][c].free && chips[r][c] === null) out.push([r, c]);
+    } else if (isOneEye(card)) {
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++)
+        if (chips[r][c] === 1 - team && !locked[r][c]) out.push([r, c]);
+    } else {
+      for (const [r, c] of positions[card.rank + card.suit] || [])
+        if (chips[r][c] === null) out.push([r, c]);
+    }
+    return out;
+  }
+  function isDead(card) {
+    if (isJack(card)) return false;
+    return (positions[card.rank + card.suit] || []).every(([r, c]) => chips[r][c] !== null);
+  }
+  function hasAnyMove(team) {
+    return hands[team].some(c => validCells(c, team).length > 0);
+  }
+
+  // ---------- Sequences ----------
+  const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+  const owns = (team, r, c) => board[r][c].free || chips[r][c] === team;
+
+  // Finds and locks new sequences made by a chip just placed at (r,c).
+  function claimSequences(team, r, c) {
+    let made = 0;
+    for (const [dr, dc] of DIRS) {
+      // collect the continuous run through (r,c)
+      let sr = r, sc = c;
+      while (inB(sr - dr, sc - dc) && owns(team, sr - dr, sc - dc)) { sr -= dr; sc -= dc; }
+      const run = [];
+      let cr = sr, cc = sc;
+      while (inB(cr, cc) && owns(team, cr, cc)) { run.push([cr, cc]); cr += dr; cc += dc; }
+      if (run.length < 5) continue;
+      const idx = run.findIndex(([a, b]) => a === r && b === c);
+      for (let start = Math.max(0, idx - 4); start <= Math.min(idx, run.length - 5); start++) {
+        const win = run.slice(start, start + 5);
+        const lockedCount = win.filter(([a, b]) => !board[a][b].free && locked[a][b]).length;
+        if (lockedCount <= 1) {
+          win.forEach(([a, b]) => { if (!board[a][b].free) locked[a][b] = true; });
+          made++;
+          break;
+        }
+      }
+    }
+    return made;
+  }
+
+  // ---------- Computer AI ----------
+  function windowsThrough(r, c) {
+    const out = [];
+    for (const [dr, dc] of DIRS) {
+      for (let k = 0; k < 5; k++) {
+        const sr = r - k * dr, sc = c - k * dc;
+        const er = sr + 4 * dr, ec = sc + 4 * dc;
+        if (!inB(sr, sc) || !inB(er, ec)) continue;
+        const cells = [];
+        for (let i = 0; i < 5; i++) cells.push([sr + i * dr, sc + i * dc]);
+        out.push(cells);
+      }
+    }
+    return out;
+  }
+  const ATTACK = [0, 1, 4, 22, 220, 10000];
+  const DEFEND = [0, 0, 2, 16, 170, 170];
+
+  function scorePlace(team, r, c) {
+    const opp = 1 - team;
+    let s = 0;
+    for (const w of windowsThrough(r, c)) {
+      let mine = 0, theirs = 0, lock = 0;
+      for (const [a, b] of w) {
+        if (a === r && b === c) { mine++; continue; }
+        if (board[a][b].free) { mine++; theirs++; continue; }
+        if (chips[a][b] === team) { mine++; if (locked[a][b]) lock++; }
+        else if (chips[a][b] === opp) theirs++;
+      }
+      const hasOpp = w.some(([a, b]) => !board[a][b].free && chips[a][b] === opp && !(a === r && b === c));
+      const hasMine = w.some(([a, b]) => !board[a][b].free && chips[a][b] === team);
+      if (!hasOpp && lock <= 1) s += ATTACK[mine];
+      if (!hasMine) {
+        // blocking value: theirs counts free corners too
+        const th = w.filter(([a, b]) => board[a][b].free || chips[a][b] === opp).length;
+        s += DEFEND[th];
+      }
+    }
+    // mild preference for the middle of the board
+    s += 3 - (Math.abs(r - 4.5) + Math.abs(c - 4.5)) * 0.3;
+    return s;
+  }
+  function scoreRemove(team, r, c) {
+    const opp = 1 - team;
+    let s = 0;
+    for (const w of windowsThrough(r, c)) {
+      const hasMine = w.some(([a, b]) => !board[a][b].free && chips[a][b] === team);
+      const theirs = w.filter(([a, b]) => board[a][b].free || chips[a][b] === opp).length;
+      const anyLocked = w.some(([a, b]) => !board[a][b].free && locked[a][b]);
+      if (!hasMine && !anyLocked) s += ATTACK[theirs] * 0.9;
+    }
+    return s;
+  }
+
+  function aiChooseMove() {
+    const hand = hands[1];
+    let best = null;
+    hand.forEach((card, i) => {
+      for (const [r, c] of validCells(card, 1)) {
+        let s;
+        if (isOneEye(card)) s = scoreRemove(1, r, c) - 25;
+        else s = scorePlace(1, r, c) - (isTwoEye(card) ? 20 : 0);
+        s += Math.random() * 2;
+        if (!best || s > best.s) best = { i, r, c, s };
+      }
+    });
+    return best;
+  }
+
+  // ---------- Game flow ----------
+  function newGame() {
+    chips = Array.from({ length: N }, () => Array(N).fill(null));
+    locked = Array.from({ length: N }, () => Array(N).fill(false));
+    deck = makeDeck(); discard = [];
+    hands = [[], []];
+    for (let i = 0; i < 7; i++) { draw(0); draw(1); }
+    score = [0, 0];
+    turn = 0; deadUsed = false; selected = null; lastMove = null; over = false; busy = false;
+    need = parseInt($("needSel").value, 10);
+    $("log").innerHTML = "";
+    log("New game. You go first (blue).");
+    render();
+  }
+
+  function log(msg) {
+    const d = document.createElement("div");
+    d.textContent = msg;
+    $("log").prepend(d);
+  }
+  const cardName = c => c.rank + SYM[c.suit];
+
+  function playCard(team, handIdx, r, c) {
+    const card = hands[team].splice(handIdx, 1)[0];
+    const who = team === 0 ? "You" : "Computer";
+    let made = 0;
+    if (isOneEye(card)) {
+      chips[r][c] = null;
+      log(`${who} played ${cardName(card)} and removed a chip at row ${r + 1}, col ${c + 1}.`);
+    } else {
+      chips[r][c] = team;
+      made = claimSequences(team, r, c);
+      log(`${who} played ${cardName(card)} at row ${r + 1}, col ${c + 1}.` + (made ? " ★ SEQUENCE!" : ""));
+    }
+    score[team] += made;
+    discard.push(card);
+    lastMove = { r, c };
+    selected = null;
+    draw(team);
+
+    if (score[team] >= need) { finish(team); return; }
+    turn = 1 - team;
+    deadUsed = false;
+    render();
+    if (turn === 1) { busy = true; setTimeout(aiTurn, 800); }
+    else if (!hasAnyMove(0) && !hasDeadCard(0)) { /* skip button handles it */ }
+  }
+
+  const hasDeadCard = team => hands[team].some(isDead);
+
+  function swapDead(team, idx) {
+    const card = hands[team].splice(idx, 1)[0];
+    discard.push(card);
+    draw(team);
+    deadUsed = true;
+    log(`${team === 0 ? "You" : "Computer"} swapped a dead ${cardName(card)}.`);
+  }
+
+  function aiTurn() {
+    if (over) return;
+    if (!deadUsed) {
+      const di = hands[1].findIndex(isDead);
+      if (di >= 0) swapDead(1, di);
+    }
+    const mv = aiChooseMove();
+    busy = false;
+    if (!mv) {
+      log("Computer has no legal move and skips.");
+      turn = 0; deadUsed = false; render();
+      return;
+    }
+    playCard(1, mv.i, mv.r, mv.c);
+  }
+
+  function finish(team) {
+    over = true; busy = false;
+    render();
+    $("endTitle").textContent = team === 0 ? "🎉 You win!" : "Computer wins";
+    $("endMsg").textContent = team === 0
+      ? "Nice sequencing!" : "Better luck next time.";
+    $("endDlg").showModal();
+  }
+
+  // ---------- Rendering ----------
+  function buildBoard() {
+    boardEl.innerHTML = "";
+    for (let r = 0; r < N; r++) {
+      cellEls[r] = [];
+      for (let c = 0; c < N; c++) {
+        const b = board[r][c];
+        const el = document.createElement("div");
+        el.className = "cell" + (b.free ? " free" : (isRed(b) ? " red" : ""));
+        el.innerHTML = b.free ? "★" : `<span class="r">${b.rank}</span><span class="s">${SYM[b.suit]}</span>`;
+        el.addEventListener("click", () => onCell(r, c));
+        boardEl.appendChild(el);
+        cellEls[r][c] = el;
+      }
+    }
+  }
+
+  function render() {
+    const targets = new Set();
+    let removing = false;
+    if (selected !== null && turn === 0 && !over) {
+      const card = hands[0][selected];
+      if (card) {
+        removing = isOneEye(card);
+        validCells(card, 0).forEach(([r, c]) => targets.add(r * N + c));
+      }
+    }
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+      const el = cellEls[r][c];
+      const b = board[r][c];
+      el.className = "cell" + (b.free ? " free" : (isRed(b) ? " red" : ""));
+      if (targets.has(r * N + c)) el.classList.add("target", ...(removing ? ["removable"] : []));
+      if (lastMove && lastMove.r === r && lastMove.c === c) el.classList.add("last");
+      const old = el.querySelector(".chip");
+      if (old) old.remove();
+      if (chips[r][c] !== null) {
+        const chip = document.createElement("div");
+        chip.className = `chip t${chips[r][c]}` + (locked[r][c] ? " locked" : "");
+        el.appendChild(chip);
+      }
+    }
+
+    // hand
+    const handEl = $("hand");
+    handEl.innerHTML = "";
+    hands[0].forEach((card, i) => {
+      const d = document.createElement("div");
+      d.className = "hcard" + (isRed(card) ? " red" : "") + (i === selected ? " sel" : "") +
+        (isDead(card) ? " dead" : "") + (turn !== 0 || over ? " disabled" : "");
+      let tag = "";
+      if (isTwoEye(card)) tag = "wild";
+      else if (isOneEye(card)) tag = "remove";
+      d.innerHTML = `<span>${card.rank}</span><span class="s">${SYM[card.suit]}</span>` +
+        (tag ? `<span class="tag">${tag}</span>` : "");
+      d.addEventListener("click", () => onHand(i));
+      handEl.appendChild(d);
+    });
+
+    $("score0").textContent = `${score[0]}/${need}`;
+    $("score1").textContent = `${score[1]}/${need}`;
+    $("pill0").classList.toggle("active", turn === 0 && !over);
+    $("pill1").classList.toggle("active", turn === 1 && !over);
+
+    const dead = hasDeadCard(0);
+    $("discardBtn").disabled = !(turn === 0 && !over && dead && !deadUsed);
+    $("skipBtn").disabled = !(turn === 0 && !over && !hasAnyMove(0) && (!dead || deadUsed));
+
+    let st = "";
+    if (over) st = "Game over";
+    else if (turn === 1) st = "Computer is thinking…";
+    else if (selected === null) st = dead && !deadUsed ? "Your turn – pick a card (you have a dead card to swap)" : "Your turn – pick a card";
+    else st = "Click a highlighted space";
+    $("status").textContent = st;
+  }
+
+  // ---------- Input ----------
+  function onHand(i) {
+    if (turn !== 0 || over || busy) return;
+    selected = selected === i ? null : i;
+    render();
+  }
+  function onCell(r, c) {
+    if (turn !== 0 || over || busy || selected === null) return;
+    const card = hands[0][selected];
+    if (!validCells(card, 0).some(([a, b]) => a === r && b === c)) return;
+    playCard(0, selected, r, c);
+  }
+  $("discardBtn").addEventListener("click", () => {
+    if (turn !== 0 || deadUsed) return;
+    // swap the dead card (the selected one if dead, else the first dead one)
+    let idx = selected !== null && isDead(hands[0][selected]) ? selected : hands[0].findIndex(isDead);
+    if (idx < 0) return;
+    swapDead(0, idx);
+    selected = null;
+    render();
+  });
+  $("skipBtn").addEventListener("click", () => {
+    if (turn !== 0) return;
+    log("You have no legal move and skip.");
+    turn = 1; deadUsed = false; selected = null; render();
+    busy = true; setTimeout(aiTurn, 600);
+  });
+  $("newBtn").addEventListener("click", newGame);
+  $("againBtn").addEventListener("click", () => { $("endDlg").close(); newGame(); });
+  $("needSel").addEventListener("change", newGame);
+
+  buildBoard();
+  newGame();
+
+  // expose for headless testing
+  window.__seq = { board, positions, LAYOUT };
+})();
+</script>
+</body>
+</html>
