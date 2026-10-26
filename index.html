@@ -7,7 +7,6 @@
 <style>
   :root {
     --bg: #14301f;
-    --felt: #1b4a2e;
     --card: #fdfaf2;
     --ink: #1a1a1a;
     --red: #c0222b;
@@ -24,23 +23,25 @@
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     min-height: 100vh;
   }
-  .app { max-width: 720px; margin: 0 auto; padding: 12px 10px 40px; }
+  .app { max-width: 720px; margin: 0 auto; padding: 8px 10px 40px; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-  h1 { margin: 0; font-size: 1.5rem; letter-spacing: .5px; }
-  .score { display: flex; gap: 8px; }
+  h1 { margin: 0; font-size: 1.2rem; letter-spacing: .5px; }
+  .score { display: flex; gap: 6px; }
   .pill {
     display: flex; align-items: center; gap: 6px;
-    background: var(--panel); padding: 5px 10px; border-radius: 999px; font-size: .9rem;
+    background: var(--panel); padding: 3px 9px; border-radius: 999px; font-size: .8rem;
     border: 2px solid transparent;
   }
   .pill.active { border-color: var(--gold); }
-  .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
   .dot.t0 { background: var(--blue); }
   .dot.t1 { background: var(--green); }
-  #status { margin: 10px 0 8px; min-height: 1.4em; font-weight: 600; text-align: center; }
+  #status { margin: 4px 0 6px; min-height: 1.3em; font-weight: 600; text-align: center; font-size: .9rem; }
 
   #board {
-    --cell: min(9.2vw, 62px);
+    /* sized so the board + your hand fit on one screen without scrolling */
+    --cell: max(24px, min(62px, calc((100vw - 40px) / 10), calc((100vh - 235px) / 10)));
+    --cell: max(24px, min(62px, calc((100vw - 40px) / 10), calc((100dvh - 235px) / 10)));
     display: grid;
     grid-template-columns: repeat(10, var(--cell));
     grid-template-rows: repeat(10, var(--cell));
@@ -82,35 +83,37 @@
   .chip.t1 { background: var(--green); }
   .chip.locked { outline: 3px solid var(--gold); outline-offset: -1px; }
 
-  .section-title { margin: 16px 0 6px; font-size: .85rem; text-transform: uppercase; letter-spacing: 1px; opacity: .8; }
-  #hand { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  #hand { display: flex; gap: 5px; justify-content: center; flex-wrap: nowrap; margin-top: 8px; padding-top: 6px; }
   .hcard {
-    width: 60px; height: 84px; background: var(--card); color: var(--ink);
-    border-radius: 8px; border: 3px solid transparent;
+    width: 44px; height: 60px; background: var(--card); color: var(--ink);
+    border-radius: 6px; border: 2px solid transparent;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font-weight: 700; font-size: 1.35rem; cursor: pointer; position: relative;
-    box-shadow: 0 3px 8px rgba(0,0,0,.4);
+    font-weight: 700; font-size: .95rem; line-height: 1.05; cursor: pointer; position: relative;
+    box-shadow: 0 2px 6px rgba(0,0,0,.4);
     transition: transform .1s;
+    flex: 0 0 auto;
   }
   .hcard.red { color: var(--red); }
-  .hcard .s { font-size: 1.6rem; }
-  .hcard .tag { font-size: .55rem; font-weight: 600; margin-top: 2px; text-transform: uppercase; }
-  .hcard:hover { transform: translateY(-4px); }
-  .hcard.sel { border-color: var(--gold); transform: translateY(-8px); }
+  .hcard .s { font-size: 1.2rem; }
+  .hcard .tag { font-size: .45rem; font-weight: 700; text-transform: uppercase; }
+  .hcard:hover { transform: translateY(-3px); }
+  .hcard.sel { border-color: var(--gold); transform: translateY(-6px); }
   .hcard.dead { opacity: .55; }
   .hcard.dead::after {
-    content: "DEAD"; position: absolute; bottom: 3px; font-size: .55rem; color: #7a1a1a; font-weight: 800;
+    content: "DEAD"; position: absolute; bottom: 2px; font-size: .45rem; color: #7a1a1a; font-weight: 800;
   }
   .hcard.disabled { pointer-events: none; opacity: .5; }
 
-  .controls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+  .controls { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 8px; align-items: center; }
   button, select {
     background: var(--panel); color: #f3f0e6; border: 1px solid #3a6b4c; border-radius: 8px;
-    padding: 8px 12px; font-size: .9rem; cursor: pointer;
+    padding: 6px 10px; font-size: .8rem; cursor: pointer; font-family: inherit;
   }
   button:hover:not(:disabled) { background: #1c3d2a; }
   button:disabled { opacity: .4; cursor: not-allowed; }
   button.primary { background: var(--gold); color: #3a2a00; border-color: var(--gold); font-weight: 700; }
+  label { font-size: .8rem; }
+  .hidden { display: none !important; }
 
   #log {
     margin-top: 14px; background: var(--panel); border-radius: 8px; padding: 8px 10px;
@@ -122,9 +125,21 @@
   details { margin-top: 14px; background: var(--panel); border-radius: 8px; padding: 8px 12px; font-size: .88rem; line-height: 1.5; }
   summary { cursor: pointer; font-weight: 600; }
 
-  dialog { border: none; border-radius: 14px; padding: 24px 28px; text-align: center; background: #fdfaf2; color: #1a1a1a; }
+  dialog { border: none; border-radius: 14px; padding: 22px 24px; text-align: center; background: #fdfaf2; color: #1a1a1a; max-width: 92vw; width: 420px; }
   dialog::backdrop { background: rgba(0,0,0,.6); }
   dialog h2 { margin-top: 0; }
+  dialog button { background: #e8e4d6; color: #1a1a1a; border-color: #c9c3ad; }
+  dialog button.primary { background: var(--gold); border-color: var(--gold); }
+  .linkrow { display: flex; gap: 6px; margin: 12px 0 8px; }
+  .linkrow input { flex: 1; min-width: 0; padding: 8px; border: 1px solid #c9c3ad; border-radius: 8px; font-size: .85rem; }
+  .note { font-size: .82rem; color: #555; margin: 6px 0; }
+  .warn { color: #a33; }
+  .dlgbtns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+
+  @media (max-width: 420px) {
+    .hcard { width: 40px; height: 56px; }
+    #hand { gap: 3px; }
+  }
 </style>
 </head>
 <body>
@@ -132,27 +147,27 @@
   <header>
     <h1>♠ Sequence ♦</h1>
     <div class="score">
-      <div class="pill" id="pill0"><span class="dot t0"></span> You: <b id="score0">0</b></div>
-      <div class="pill" id="pill1"><span class="dot t1"></span> Computer: <b id="score1">0</b></div>
+      <div class="pill" id="pill0"><span class="dot t0"></span><span id="lab0">You</span>: <b id="score0">0</b></div>
+      <div class="pill" id="pill1"><span class="dot t1"></span><span id="lab1">Computer</span>: <b id="score1">0</b></div>
     </div>
   </header>
 
   <div id="status"></div>
   <div id="board"></div>
-
-  <div class="section-title">Your hand</div>
   <div id="hand"></div>
 
   <div class="controls">
     <button id="discardBtn">Swap dead card</button>
-    <button id="skipBtn" disabled>Skip turn (no moves)</button>
-    <label>Sequences to win
+    <button id="skipBtn" disabled>Skip turn</button>
+    <button id="friendBtn">Play with a friend</button>
+    <button id="newBtn" class="primary">New game</button>
+    <label id="needLabel">First to
       <select id="needSel">
         <option value="1">1</option>
         <option value="2" selected>2</option>
       </select>
+      sequences
     </label>
-    <button id="newBtn" class="primary">New game</button>
   </div>
 
   <div id="log"></div>
@@ -166,6 +181,7 @@
       <li><b>J♠ / J♥</b> (one-eyed jacks) remove an opponent's chip (not one that's part of a sequence).</li>
       <li><b>Dead card:</b> if both spaces for a card are taken, you can swap it for a new card once per turn, then still play.</li>
       <li>Two sequences can share one chip. Win by reaching the number of sequences chosen above.</li>
+      <li><b>Play with a friend:</b> click the button, send them the link, and they can join from any computer. If your friend leaves, the computer takes their seat.</li>
     </ul>
   </details>
 </div>
@@ -176,6 +192,18 @@
   <button class="primary" id="againBtn">Play again</button>
 </dialog>
 
+<dialog id="netDlg">
+  <h2>Play with a friend</h2>
+  <p class="note" id="netInfo">Send this link to your friend. When they open it, the game starts.</p>
+  <div class="linkrow">
+    <input id="linkBox" readonly value="Creating link…">
+    <button id="copyBtn" class="primary">Copy</button>
+  </div>
+  <p class="note" id="netMsg"></p>
+  <div class="dlgbtns"><button id="netClose">Close</button></div>
+</dialog>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
 (() => {
   "use strict";
@@ -201,14 +229,18 @@
   const board = LAYOUT.map(row => row.trim().split(/\s+/).map(tok =>
     tok === "F" ? { free: true } : { rank: tok.slice(0, -1), suit: tok.slice(-1) }
   ));
-  const positions = {}; // "7H" -> [[r,c],[r,c]]
+  const positions = {};
   board.forEach((row, r) => row.forEach((cell, c) => {
     if (cell.free) return;
     (positions[cell.rank + cell.suit] ||= []).push([r, c]);
   }));
 
   // ---------- State ----------
-  let chips, locked, deck, discard, hands, score, turn, deadUsed, selected, lastMove, over, need, busy;
+  // mode: "ai" (vs computer) | "host" (online, you are blue) | "guest" (online, you are green)
+  let mode = "ai", me = 0;
+  let chips, locked, deck, discard, hands, score, turn, deadUsed, selected, lastMove, over, busy, winner;
+  let need = 2, logLines = [], banner = "";
+  let peer = null, conn = null, hostId = null;
 
   const $ = id => document.getElementById(id);
   const boardEl = $("board");
@@ -256,19 +288,16 @@
     if (isJack(card)) return false;
     return (positions[card.rank + card.suit] || []).every(([r, c]) => chips[r][c] !== null);
   }
-  function hasAnyMove(team) {
-    return hands[team].some(c => validCells(c, team).length > 0);
-  }
+  const hasAnyMove = team => hands[team].some(c => validCells(c, team).length > 0);
+  const hasDeadCard = team => hands[team].some(isDead);
 
   // ---------- Sequences ----------
   const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
   const owns = (team, r, c) => board[r][c].free || chips[r][c] === team;
 
-  // Finds and locks new sequences made by a chip just placed at (r,c).
   function claimSequences(team, r, c) {
     let made = 0;
     for (const [dr, dc] of DIRS) {
-      // collect the continuous run through (r,c)
       let sr = r, sc = c;
       while (inB(sr - dr, sc - dc) && owns(team, sr - dr, sc - dc)) { sr -= dr; sc -= dc; }
       const run = [];
@@ -311,23 +340,20 @@
     const opp = 1 - team;
     let s = 0;
     for (const w of windowsThrough(r, c)) {
-      let mine = 0, theirs = 0, lock = 0;
+      let mine = 0, lock = 0;
       for (const [a, b] of w) {
         if (a === r && b === c) { mine++; continue; }
-        if (board[a][b].free) { mine++; theirs++; continue; }
+        if (board[a][b].free) { mine++; continue; }
         if (chips[a][b] === team) { mine++; if (locked[a][b]) lock++; }
-        else if (chips[a][b] === opp) theirs++;
       }
       const hasOpp = w.some(([a, b]) => !board[a][b].free && chips[a][b] === opp && !(a === r && b === c));
       const hasMine = w.some(([a, b]) => !board[a][b].free && chips[a][b] === team);
       if (!hasOpp && lock <= 1) s += ATTACK[mine];
       if (!hasMine) {
-        // blocking value: theirs counts free corners too
         const th = w.filter(([a, b]) => board[a][b].free || chips[a][b] === opp).length;
         s += DEFEND[th];
       }
     }
-    // mild preference for the middle of the board
     s += 3 - (Math.abs(r - 4.5) + Math.abs(c - 4.5)) * 0.3;
     return s;
   }
@@ -342,11 +368,9 @@
     }
     return s;
   }
-
   function aiChooseMove() {
-    const hand = hands[1];
     let best = null;
-    hand.forEach((card, i) => {
+    hands[1].forEach((card, i) => {
       for (const [r, c] of validCells(card, 1)) {
         let s;
         if (isOneEye(card)) s = scoreRemove(1, r, c) - 25;
@@ -358,39 +382,57 @@
     return best;
   }
 
-  // ---------- Game flow ----------
-  function newGame() {
+  // ---------- Game flow (runs on the host / vs-computer side) ----------
+  function initState() {
     chips = Array.from({ length: N }, () => Array(N).fill(null));
     locked = Array.from({ length: N }, () => Array(N).fill(false));
-    deck = makeDeck(); discard = [];
+    deck = []; discard = [];
     hands = [[], []];
-    for (let i = 0; i < 7; i++) { draw(0); draw(1); }
     score = [0, 0];
-    turn = 0; deadUsed = false; selected = null; lastMove = null; over = false; busy = false;
+    turn = 0; deadUsed = false; selected = null; lastMove = null;
+    over = false; busy = false; winner = null; logLines = [];
+  }
+
+  function newGame() {
+    initState();
+    deck = makeDeck();
+    for (let i = 0; i < 7; i++) { draw(0); draw(1); }
     need = parseInt($("needSel").value, 10);
-    $("log").innerHTML = "";
-    log("New game. You go first (blue).");
+    if ($("endDlg").open) $("endDlg").close();
+    log(mode === "ai" ? "New game. You go first (blue)." : "New game. Blue goes first.");
     render();
+    broadcast();
   }
 
   function log(msg) {
-    const d = document.createElement("div");
-    d.textContent = msg;
-    $("log").prepend(d);
+    logLines.unshift(msg);
+    if (logLines.length > 60) logLines.length = 60;
+    renderLog();
+  }
+  function renderLog() {
+    const el = $("log");
+    el.innerHTML = "";
+    logLines.forEach(m => { const d = document.createElement("div"); d.textContent = m; el.appendChild(d); });
   }
   const cardName = c => c.rank + SYM[c.suit];
+  const whoName = team => mode === "ai" ? (team === 0 ? "You" : "Computer") : (team === 0 ? "Blue" : "Green");
+
+  function afterTurnChange() {
+    render();
+    if (mode === "ai" && turn === 1 && !over) { busy = true; setTimeout(aiTurn, 800); }
+    broadcast();
+  }
 
   function playCard(team, handIdx, r, c) {
     const card = hands[team].splice(handIdx, 1)[0];
-    const who = team === 0 ? "You" : "Computer";
     let made = 0;
     if (isOneEye(card)) {
       chips[r][c] = null;
-      log(`${who} played ${cardName(card)} and removed a chip at row ${r + 1}, col ${c + 1}.`);
+      log(`${whoName(team)} played ${cardName(card)} and removed a chip at row ${r + 1}, col ${c + 1}.`);
     } else {
       chips[r][c] = team;
       made = claimSequences(team, r, c);
-      log(`${who} played ${cardName(card)} at row ${r + 1}, col ${c + 1}.` + (made ? " ★ SEQUENCE!" : ""));
+      log(`${whoName(team)} played ${cardName(card)} at row ${r + 1}, col ${c + 1}.` + (made ? " ★ SEQUENCE!" : ""));
     }
     score[team] += made;
     discard.push(card);
@@ -401,44 +443,46 @@
     if (score[team] >= need) { finish(team); return; }
     turn = 1 - team;
     deadUsed = false;
-    render();
-    if (turn === 1) { busy = true; setTimeout(aiTurn, 800); }
-    else if (!hasAnyMove(0) && !hasDeadCard(0)) { /* skip button handles it */ }
+    afterTurnChange();
   }
-
-  const hasDeadCard = team => hands[team].some(isDead);
 
   function swapDead(team, idx) {
     const card = hands[team].splice(idx, 1)[0];
     discard.push(card);
     draw(team);
     deadUsed = true;
-    log(`${team === 0 ? "You" : "Computer"} swapped a dead ${cardName(card)}.`);
+    log(`${whoName(team)} swapped a dead ${cardName(card)}.`);
+  }
+
+  function applySkip(team) {
+    log(`${whoName(team)} ${team === 0 && mode === "ai" ? "have" : "has"} no legal move and skip${team === 0 && mode === "ai" ? "" : "s"}.`);
+    turn = 1 - team; deadUsed = false; selected = null;
+    afterTurnChange();
   }
 
   function aiTurn() {
-    if (over) return;
+    if (over || mode !== "ai") return;
     if (!deadUsed) {
       const di = hands[1].findIndex(isDead);
       if (di >= 0) swapDead(1, di);
     }
     const mv = aiChooseMove();
     busy = false;
-    if (!mv) {
-      log("Computer has no legal move and skips.");
-      turn = 0; deadUsed = false; render();
-      return;
-    }
+    if (!mv) { applySkip(1); return; }
     playCard(1, mv.i, mv.r, mv.c);
   }
 
   function finish(team) {
-    over = true; busy = false;
+    over = true; busy = false; winner = team;
     render();
-    $("endTitle").textContent = team === 0 ? "🎉 You win!" : "Computer wins";
-    $("endMsg").textContent = team === 0
-      ? "Nice sequencing!" : "Better luck next time.";
-    $("endDlg").showModal();
+    showEnd();
+    broadcast();
+  }
+  function showEnd() {
+    const won = winner === me;
+    $("endTitle").textContent = won ? "🎉 You win!" : (mode === "ai" ? "Computer wins" : "Your friend wins");
+    $("endMsg").textContent = won ? "Nice sequencing!" : "Better luck next time.";
+    if (!$("endDlg").open) $("endDlg").showModal();
   }
 
   // ---------- Rendering ----------
@@ -458,14 +502,17 @@
     }
   }
 
+  const canAct = () => turn === me && !over && !busy && !banner;
+
   function render() {
+    const mine = hands[me];
     const targets = new Set();
     let removing = false;
-    if (selected !== null && turn === 0 && !over) {
-      const card = hands[0][selected];
+    if (selected !== null && canAct()) {
+      const card = mine[selected];
       if (card) {
         removing = isOneEye(card);
-        validCells(card, 0).forEach(([r, c]) => targets.add(r * N + c));
+        validCells(card, me).forEach(([r, c]) => targets.add(r * N + c));
       }
     }
     for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
@@ -483,13 +530,12 @@
       }
     }
 
-    // hand
     const handEl = $("hand");
     handEl.innerHTML = "";
-    hands[0].forEach((card, i) => {
+    mine.forEach((card, i) => {
       const d = document.createElement("div");
       d.className = "hcard" + (isRed(card) ? " red" : "") + (i === selected ? " sel" : "") +
-        (isDead(card) ? " dead" : "") + (turn !== 0 || over ? " disabled" : "");
+        (isDead(card) ? " dead" : "") + (!canAct() ? " disabled" : "");
       let tag = "";
       if (isTwoEye(card)) tag = "wild";
       else if (isOneEye(card)) tag = "remove";
@@ -499,18 +545,31 @@
       handEl.appendChild(d);
     });
 
+    // labels
+    if (mode === "ai") { $("lab0").textContent = "You"; $("lab1").textContent = "Computer"; }
+    else {
+      $("lab0").textContent = "Blue" + (me === 0 ? " (you)" : "");
+      $("lab1").textContent = "Green" + (me === 1 ? " (you)" : "");
+    }
     $("score0").textContent = `${score[0]}/${need}`;
     $("score1").textContent = `${score[1]}/${need}`;
     $("pill0").classList.toggle("active", turn === 0 && !over);
     $("pill1").classList.toggle("active", turn === 1 && !over);
 
-    const dead = hasDeadCard(0);
-    $("discardBtn").disabled = !(turn === 0 && !over && dead && !deadUsed);
-    $("skipBtn").disabled = !(turn === 0 && !over && !hasAnyMove(0) && (!dead || deadUsed));
+    const guest = mode === "guest";
+    $("friendBtn").classList.toggle("hidden", guest);
+    $("newBtn").classList.toggle("hidden", guest);
+    $("needLabel").classList.toggle("hidden", guest);
 
-    let st = "";
-    if (over) st = "Game over";
-    else if (turn === 1) st = "Computer is thinking…";
+    const dead = hasDeadCard(me);
+    $("discardBtn").disabled = !(canAct() && dead && !deadUsed);
+    $("skipBtn").disabled = !(canAct() && !hasAnyMove(me) && (!dead || deadUsed));
+
+    let st;
+    if (banner) st = banner;
+    else if (over) st = "Game over";
+    else if (turn !== me) st = mode === "ai" ? "Computer is thinking…" : "Waiting for your friend…";
+    else if (busy) st = "Sending move…";
     else if (selected === null) st = dead && !deadUsed ? "Your turn – pick a card (you have a dead card to swap)" : "Your turn – pick a card";
     else st = "Click a highlighted space";
     $("status").textContent = st;
@@ -518,39 +577,198 @@
 
   // ---------- Input ----------
   function onHand(i) {
-    if (turn !== 0 || over || busy) return;
+    if (!canAct()) return;
     selected = selected === i ? null : i;
     render();
   }
   function onCell(r, c) {
-    if (turn !== 0 || over || busy || selected === null) return;
-    const card = hands[0][selected];
-    if (!validCells(card, 0).some(([a, b]) => a === r && b === c)) return;
-    playCard(0, selected, r, c);
+    if (!canAct() || selected === null) return;
+    const card = hands[me][selected];
+    if (!card || !validCells(card, me).some(([a, b]) => a === r && b === c)) return;
+    if (mode === "guest") {
+      send({ t: "play", i: selected, r, c });
+      selected = null; busy = true; render();
+    } else {
+      playCard(me, selected, r, c);
+    }
   }
   $("discardBtn").addEventListener("click", () => {
-    if (turn !== 0 || deadUsed) return;
-    // swap the dead card (the selected one if dead, else the first dead one)
-    let idx = selected !== null && isDead(hands[0][selected]) ? selected : hands[0].findIndex(isDead);
+    if (!canAct() || deadUsed) return;
+    const idx = selected !== null && isDead(hands[me][selected]) ? selected : hands[me].findIndex(isDead);
     if (idx < 0) return;
-    swapDead(0, idx);
     selected = null;
+    if (mode === "guest") { send({ t: "swap", i: idx }); busy = true; render(); return; }
+    swapDead(me, idx);
     render();
+    broadcast();
   });
   $("skipBtn").addEventListener("click", () => {
-    if (turn !== 0) return;
-    log("You have no legal move and skip.");
-    turn = 1; deadUsed = false; selected = null; render();
-    busy = true; setTimeout(aiTurn, 600);
+    if (!canAct()) return;
+    if (mode === "guest") { send({ t: "skip" }); busy = true; render(); return; }
+    applySkip(me);
   });
-  $("newBtn").addEventListener("click", newGame);
-  $("againBtn").addEventListener("click", () => { $("endDlg").close(); newGame(); });
-  $("needSel").addEventListener("change", newGame);
+  $("newBtn").addEventListener("click", () => { if (mode !== "guest") newGame(); });
+  $("againBtn").addEventListener("click", () => {
+    $("endDlg").close();
+    if (mode === "guest") { send({ t: "newgame" }); banner = ""; busy = true; render(); }
+    else newGame();
+  });
+  $("needSel").addEventListener("change", () => { if (mode !== "guest") newGame(); });
 
+  // ---------- Online play (PeerJS, peer-to-peer) ----------
+  function send(msg) { try { if (conn && conn.open) conn.send(msg); } catch (e) {} }
+
+  function broadcast() {
+    if (mode !== "host" || !conn || !conn.open) return;
+    send({
+      t: "state",
+      chips, locked, score, turn, deadUsed, lastMove, over, need, winner,
+      hand: hands[1], log: logLines
+    });
+  }
+
+  function netMsg(text, warn) {
+    $("netMsg").textContent = text || "";
+    $("netMsg").classList.toggle("warn", !!warn);
+  }
+
+  function randomId() {
+    const a = "abcdefghjkmnpqrstuvwxyz23456789";
+    let s = "seq-";
+    for (let i = 0; i < 6; i++) s += a[Math.floor(Math.random() * a.length)];
+    return s;
+  }
+
+  function startHosting() {
+    $("netDlg").showModal();
+    if (location.protocol === "file:") {
+      netMsg("Open the game from its website address (not a file on your computer) so your friend can use the link.", true);
+    } else netMsg("");
+    if (typeof Peer === "undefined") {
+      $("linkBox").value = "";
+      netMsg("Online play could not load. Check your internet connection and refresh the page.", true);
+      return;
+    }
+    if (hostId) { showLink(); return; }
+    createPeer(0);
+  }
+
+  function showLink() {
+    $("linkBox").value = location.href.split("#")[0] + "#join=" + hostId;
+    if (conn && conn.open) netMsg("A friend is already connected.");
+  }
+
+  function createPeer(attempt) {
+    const id = randomId();
+    const p = new Peer(id);
+    p.on("open", () => { peer = p; hostId = id; showLink(); });
+    p.on("error", err => {
+      if (err.type === "unavailable-id" && attempt < 5) { try { p.destroy(); } catch (e) {} createPeer(attempt + 1); }
+      else netMsg("Connection problem (" + err.type + "). Close this and try again.", true);
+    });
+    p.on("connection", c => {
+      if (conn && conn.open) {
+        c.on("open", () => { c.send({ t: "full" }); setTimeout(() => c.close(), 300); });
+        return;
+      }
+      conn = c;
+      c.on("open", () => {
+        mode = "host"; me = 0; banner = "";
+        if ($("netDlg").open) $("netDlg").close();
+        newGame();
+        log("Your friend joined. You are blue.");
+        broadcast();
+      });
+      c.on("data", onGuestMsg);
+      c.on("close", () => {
+        if (conn !== c) return;
+        conn = null;
+        if (mode !== "host") return;
+        mode = "ai";
+        log("Your friend left – the computer took their seat.");
+        render();
+        if (turn === 1 && !over) { busy = true; setTimeout(aiTurn, 800); }
+      });
+    });
+  }
+
+  // Host receives a request from the guest (always team 1). Validate everything.
+  function onGuestMsg(m) {
+    if (mode !== "host" || !m) return;
+    if (m.t === "newgame") { newGame(); return; }
+    if (over || turn !== 1) { broadcast(); return; }
+    if (m.t === "play") {
+      const card = hands[1][m.i];
+      if (card && validCells(card, 1).some(([a, b]) => a === m.r && b === m.c)) playCard(1, m.i, m.r, m.c);
+      else broadcast();
+    } else if (m.t === "swap") {
+      const card = hands[1][m.i];
+      if (!deadUsed && card && isDead(card)) { swapDead(1, m.i); render(); }
+      broadcast();
+    } else if (m.t === "skip") {
+      if (!hasAnyMove(1)) applySkip(1); else broadcast();
+    }
+  }
+
+  // Guest side
+  function joinGame(id) {
+    mode = "guest"; me = 1;
+    initState();
+    banner = "Connecting to your friend's game…";
+    render();
+    if (typeof Peer === "undefined") {
+      banner = "Online play could not load. Check your internet connection and refresh.";
+      render(); return;
+    }
+    peer = new Peer();
+    peer.on("open", () => {
+      conn = peer.connect(id, { reliable: true });
+      conn.on("open", () => { banner = "Connected! Waiting for the game…"; render(); });
+      conn.on("data", m => {
+        if (m && m.t === "state") applySnapshot(m);
+        else if (m && m.t === "full") { banner = "That game already has two players."; render(); }
+      });
+      conn.on("close", () => {
+        banner = "Connection lost. Ask your friend for a new link.";
+        if ($("endDlg").open) $("endDlg").close();
+        render();
+      });
+    });
+    peer.on("error", e => {
+      banner = e.type === "peer-unavailable"
+        ? "Couldn't find that game. The link may be old – ask your friend for a new one."
+        : "Connection problem (" + e.type + "). Refresh to try again.";
+      render();
+    });
+  }
+
+  function applySnapshot(s) {
+    chips = s.chips; locked = s.locked; score = s.score; turn = s.turn;
+    deadUsed = s.deadUsed; lastMove = s.lastMove; over = s.over; need = s.need; winner = s.winner;
+    hands = [[], []]; hands[me] = s.hand;
+    logLines = s.log;
+    selected = null; busy = false; banner = "";
+    $("needSel").value = String(need);
+    renderLog();
+    render();
+    if (over) showEnd();
+    else if ($("endDlg").open) $("endDlg").close();
+  }
+
+  $("friendBtn").addEventListener("click", startHosting);
+  $("netClose").addEventListener("click", () => $("netDlg").close());
+  $("copyBtn").addEventListener("click", async () => {
+    const box = $("linkBox");
+    try { await navigator.clipboard.writeText(box.value); netMsg("Link copied!"); }
+    catch (e) { box.select(); try { document.execCommand("copy"); netMsg("Link copied!"); } catch (e2) { netMsg("Select the link and copy it."); } }
+  });
+
+  // ---------- Start ----------
   buildBoard();
-  newGame();
+  const joinMatch = location.hash.match(/^#join=(.+)$/);
+  if (joinMatch) joinGame(decodeURIComponent(joinMatch[1]));
+  else newGame();
 
-  // expose for headless testing
   window.__seq = { board, positions, LAYOUT };
 })();
 </script>
