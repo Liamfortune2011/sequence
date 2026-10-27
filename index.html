@@ -159,6 +159,13 @@
   <div class="controls">
     <button id="discardBtn">Swap dead card</button>
     <button id="skipBtn" disabled>Skip turn</button>
+    <label id="levelLabel">Level
+      <select id="levelSel">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </label>
     <button id="friendBtn">Play with a friend</button>
     <button id="newBtn" class="primary">New game</button>
     <label id="needLabel">First to
@@ -239,7 +246,7 @@
   // mode: "ai" (vs computer) | "host" (online, you are blue) | "guest" (online, you are green)
   let mode = "ai", me = 0;
   let chips, locked, deck, discard, hands, score, turn, deadUsed, selected, lastMove, over, busy, winner;
-  let need = 2, logLines = [], banner = "";
+  let need = 2, logLines = [], banner = "", level = "medium";
   let peer = null, conn = null, hostId = null;
 
   const $ = id => document.getElementById(id);
@@ -368,17 +375,30 @@
     }
     return s;
   }
+  // Difficulty: chance of a purely random move, and how "fuzzy" its judgement is.
+  const LEVELS = {
+    easy:   { random: 0.9,  noise: 60 },  // mostly random, rarely blocks or plans
+    medium: { random: 0.3,  noise: 30 },  // decent, but misses things
+    hard:   { random: 0,    noise: 2 }    // always plays its best-scored move
+  };
   function aiChooseMove() {
-    let best = null;
+    const L = LEVELS[level] || LEVELS.medium;
+    const all = [];
     hands[1].forEach((card, i) => {
       for (const [r, c] of validCells(card, 1)) {
         let s;
         if (isOneEye(card)) s = scoreRemove(1, r, c) - 25;
         else s = scorePlace(1, r, c) - (isTwoEye(card) ? 20 : 0);
-        s += Math.random() * 2;
-        if (!best || s > best.s) best = { i, r, c, s };
+        all.push({ i, r, c, s });
       }
     });
+    if (!all.length) return null;
+    if (Math.random() < L.random) return all[Math.floor(Math.random() * all.length)];
+    let best = null;
+    for (const m of all) {
+      const v = m.s + Math.random() * L.noise;
+      if (!best || v > best.v) best = { ...m, v };
+    }
     return best;
   }
 
@@ -558,6 +578,7 @@
 
     const guest = mode === "guest";
     $("friendBtn").classList.toggle("hidden", guest);
+    $("levelLabel").classList.toggle("hidden", mode !== "ai");
     $("newBtn").classList.toggle("hidden", guest);
     $("needLabel").classList.toggle("hidden", guest);
 
@@ -821,6 +842,12 @@
     else if ($("endDlg").open) $("endDlg").close();
   }
 
+  try { const saved = localStorage.getItem("seqLevel"); if (LEVELS[saved]) { level = saved; $("levelSel").value = saved; } } catch (e) {}
+  $("levelSel").addEventListener("change", () => {
+    level = $("levelSel").value;
+    try { localStorage.setItem("seqLevel", level); } catch (e) {}
+    log("Computer level set to " + level + ".");
+  });
   $("friendBtn").addEventListener("click", startHosting);
   $("netClose").addEventListener("click", () => $("netDlg").close());
   $("copyBtn").addEventListener("click", async () => {
