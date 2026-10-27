@@ -607,7 +607,11 @@
     if (mode === "guest") { send({ t: "skip" }); busy = true; render(); return; }
     applySkip(me);
   });
-  $("newBtn").addEventListener("click", () => { if (mode !== "guest") newGame(); });
+  $("newBtn").addEventListener("click", () => {
+    if (mode === "guest") return;
+    if (mode === "host" && !(conn && conn.open)) { mode = "ai"; banner = ""; }  // nobody joined: back to vs computer
+    newGame();
+  });
   $("againBtn").addEventListener("click", () => {
     $("endDlg").close();
     if (mode === "guest") { send({ t: "newgame" }); banner = ""; busy = true; render(); }
@@ -641,30 +645,68 @@
 
   function startHosting() {
     $("netDlg").showModal();
-    if (location.protocol === "file:") {
-      netMsg("Open the game from its website address (not a file on your computer) so your friend can use the link.", true);
-    } else netMsg("");
     if (typeof Peer === "undefined") {
       $("linkBox").value = "";
       netMsg("Online play could not load. Check your internet connection and refresh the page.", true);
       return;
     }
-    if (hostId) { showLink(); return; }
+    if (!(conn && conn.open)) {
+      // jump straight into a fresh online game that waits for the friend
+      mode = "host"; me = 0;
+      newGame();
+      banner = "Waiting for your friend to join… (press “Play with a friend” to see the link again)";
+      render();
+    }
+    if (hostId && peer && !peer.destroyed) { showLink(); tryReconnect(); return; }
+    $("linkBox").value = "Creating link…";
     createPeer(0);
+  }
+
+  function refreshNetStatus() {
+    if (!$("netDlg").open) return;
+    const pre = location.protocol === "file:"
+      ? "Open the game from its website address (not a file on your computer) so your friend can use the link. " : "";
+    let msg;
+    if (conn && conn.open) msg = "A friend is connected.";
+    else if (!peer || !hostId) msg = "Creating your link…";
+    else if (peer.disconnected) msg = "Reconnecting to the connection service… keep this tab open.";
+    else msg = "✓ Link is live. Keep this tab open until your friend opens it.";
+    netMsg(pre + msg, !!pre);
   }
 
   function showLink() {
     $("linkBox").value = location.href.split("#")[0] + "#join=" + hostId;
-    if (conn && conn.open) netMsg("A friend is already connected.");
+    refreshNetStatus();
   }
+
+  function tryReconnect() {
+    if (peer && peer.disconnected && !peer.destroyed) { try { peer.reconnect(); } catch (e) {} }
+  }
+  // keep the host's link alive (tabs that sleep or lose wifi drop off the connection service)
+  setInterval(() => { if (mode === "host") tryReconnect(); }, 4000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) tryReconnect(); });
 
   function createPeer(attempt) {
     const id = randomId();
     const p = new Peer(id);
-    p.on("open", () => { peer = p; hostId = id; showLink(); });
+    let opened = false;
+    p.on("open", () => { opened = true; peer = p; hostId = id; showLink(); });
+    p.on("disconnected", () => { refreshNetStatus(); setTimeout(tryReconnect, 800); });
     p.on("error", err => {
-      if (err.type === "unavailable-id" && attempt < 5) { try { p.destroy(); } catch (e) {} createPeer(attempt + 1); }
-      else netMsg("Connection problem (" + err.type + "). Close this and try again.", true);
+      if (p.destroyed) {
+        if (peer === p) peer = null;
+        const n = opened ? 0 : attempt;
+        if (opened) hostId = null;
+        if (n < 8) {
+          netMsg(err.type === "unavailable-id" ? "" : "Link lost (" + err.type + "). Making a new link…");
+          $("linkBox").value = "Creating link…";
+          setTimeout(() => createPeer(n + 1), 1500);
+        } else {
+          netMsg("Couldn't reach the connection service (" + err.type + "). Check your internet connection and try again.", true);
+        }
+      } else {
+        netMsg("Connection hiccup (" + err.type + ").");
+      }
     });
     p.on("connection", c => {
       if (conn && conn.open) {
@@ -684,7 +726,7 @@
         if (conn !== c) return;
         conn = null;
         if (mode !== "host") return;
-        mode = "ai";
+        mode = "ai"; banner = "";
         log("Your friend left – the computer took their seat.");
         render();
         if (turn === 1 && !over) { busy = true; setTimeout(aiTurn, 800); }
@@ -711,6 +753,7 @@
   }
 
   // Guest side
+  const MAX_TRIES = 8;
   function joinGame(id) {
     mode = "guest"; me = 1;
     initState();
@@ -720,24 +763,47 @@
       banner = "Online play could not load. Check your internet connection and refresh.";
       render(); return;
     }
+    let tries = 1;
     peer = new Peer();
-    peer.on("open", () => {
-      conn = peer.connect(id, { reliable: true });
-      conn.on("open", () => { banner = "Connected! Waiting for the game…"; render(); });
-      conn.on("data", m => {
-        if (m && m.t === "state") applySnapshot(m);
-        else if (m && m.t === "full") { banner = "That game already has two players."; render(); }
-      });
-      conn.on("close", () => {
-        banner = "Connection lost. Ask your friend for a new link.";
-        if ($("endDlg").open) $("endDlg").close();
-        render();
-      });
-    });
+    peer.on("open", () => connectToHost(id));
     peer.on("error", e => {
-      banner = e.type === "peer-unavailable"
-        ? "Couldn't find that game. The link may be old – ask your friend for a new one."
-        : "Connection problem (" + e.type + "). Refresh to try again.";
+      if (e.type === "peer-unavailable") {
+        if (tries < MAX_TRIES) {
+          tries++;
+          banner = `Looking for your friend's game… (try ${tries} of ${MAX_TRIES}). Make sure they still have the game tab open.`;
+          render();
+          setTimeout(() => connectToHost(id), 2500);
+        } else {
+          banner = "Couldn't find that game. Ask your friend to press “Play with a friend” again and send you the new link (they must keep their tab open).";
+          render();
+        }
+      } else {
+        banner = "Connection problem (" + e.type + "). Refresh to try again.";
+        render();
+      }
+    });
+  }
+
+  function connectToHost(id) {
+    if (!peer || peer.destroyed) return;
+    const c = peer.connect(id, { reliable: true });
+    conn = c;
+    let opened = false;
+    setTimeout(() => {
+      if (!opened && conn === c && !over) {
+        banner = "Still trying to connect… your network may be blocking direct connections.";
+        render();
+      }
+    }, 15000);
+    c.on("open", () => { opened = true; banner = "Connected! Waiting for the game…"; render(); });
+    c.on("data", m => {
+      if (m && m.t === "state") applySnapshot(m);
+      else if (m && m.t === "full") { banner = "That game already has two players."; render(); }
+    });
+    c.on("close", () => {
+      if (conn !== c) return;
+      banner = "Connection lost. Ask your friend for a new link.";
+      if ($("endDlg").open) $("endDlg").close();
       render();
     });
   }
